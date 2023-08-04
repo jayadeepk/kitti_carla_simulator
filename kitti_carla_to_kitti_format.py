@@ -63,9 +63,9 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
         for image in tqdm(os.listdir(images_dir), desc='    '):
             image_path = os.path.join(images_dir, image)
             if image.endswith('_0.png'):
-                shutil.copy(image_path, output_image_left_dir)
+                shutil.copy(image_path, os.path.join(output_image_left_dir, image.replace('_0.png', '.png')))
             if image.endswith('_1.png'):
-                shutil.copy(image_path, output_image_right_dir)
+                shutil.copy(image_path, os.path.join(output_image_right_dir, image.replace('_1.png', '.png')))
 
         # Convert timestamps file
         print('  Timestamps')
