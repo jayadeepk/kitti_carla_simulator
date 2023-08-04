@@ -54,6 +54,16 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
             if image.endswith('_1.png'):
                 shutil.copy(image_path, output_image_right_dir)
 
+        # Convert timestamps file
+        print('  Timestamps')
+        with open(os.path.join(input_town_dir, 'generated', 'full_ts_camera.txt'), 'r') as f:
+            lines = f.readlines()
+            lines = lines[1:]
+            lines = [line.split(' ')[1] for line in lines]
+
+        with open(os.path.join(output_sequences_dir, town, 'times.txt'), 'w') as f:
+            f.writelines(lines)
+
 
 if __name__ == '__main__':
     convert_kitti_carla_to_kitti_format(KITTI_CARLA_DIR, OUTPUT_DIR)
