@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+"""
+Convert KITTI-CARLA dataset into KITTI odometry dataset format
+"""
 
 from modules import ply
+from PIL import Image
 from tqdm import tqdm
 import math
 import numpy as np
@@ -13,6 +17,8 @@ OUTPUT_DIR = '/home/jay/datasets/KITTI-CARLA-KITTI-format'
 CAMERA_FOV = 72
 IMAGE_SIZE_X = 1392
 IMAGE_SIZE_Y = 1024
+TARGET_IMAGE_SIZE_X = 1242
+TARGET_IMAGE_SIZE_Y = 376
 
 
 def convert_ply_to_bin(ply_dir, output_bin_dir):
@@ -38,7 +44,21 @@ def compute_intrinsics(camera_fov, image_size_x, image_size_y):
                      [0, 0, 1]])
 
 
-def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
+def crop_image(image_path, config):
+                    """
+                    Crop the image to the desired size
+                    """
+                    img = Image.open(image_path)
+                    width, height = img.size
+                    left = (width - config['target_image_size_x']) / 2
+                    top = (height - config['target_image_size_y']) / 2
+                    right = (width + config['target_image_size_x']) / 2
+                    bottom = (height + config['target_image_size_y']) / 2
+                    img = img.crop((left, top, right, bottom))
+                    return img
+
+
+def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir, config):
     output_sequences_dir = os.path.join(output_dir, 'sequences')
     for town in os.listdir(kitti_carla_dir):
         print(town)
@@ -60,12 +80,15 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
         # Copy KITTI CARLA stereo images to the output directory
         print('  Images')
         images_dir = os.path.join(input_town_dir, 'generated', 'images_rgb')
+
         for image in tqdm(os.listdir(images_dir), desc='    '):
             image_path = os.path.join(images_dir, image)
             if image.endswith('_0.png'):
-                shutil.copy(image_path, os.path.join(output_image_left_dir, image.replace('_0.png', '.png')))
-            if image.endswith('_1.png'):
-                shutil.copy(image_path, os.path.join(output_image_right_dir, image.replace('_1.png', '.png')))
+                cropped_img = crop_image(image_path, config)
+                cropped_img.save(os.path.join(output_image_left_dir, image.replace('_0.png', '.png')))
+            elif image.endswith('_1.png'):
+                cropped_img = crop_image(image_path, config)
+                cropped_img.save(os.path.join(output_image_right_dir, image.replace('_1.png', '.png')))
 
         # Convert timestamps file
         print('  Timestamps')
@@ -96,4 +119,8 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
 
 
 if __name__ == '__main__':
-    convert_kitti_carla_to_kitti_format(KITTI_CARLA_DIR, OUTPUT_DIR)
+    config = {
+        'target_image_size_x': TARGET_IMAGE_SIZE_X,
+        'target_image_size_y': TARGET_IMAGE_SIZE_Y,
+    }
+    convert_kitti_carla_to_kitti_format(KITTI_CARLA_DIR, OUTPUT_DIR, config)
