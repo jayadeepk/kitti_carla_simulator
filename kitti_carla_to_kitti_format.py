@@ -2,12 +2,17 @@
 
 from modules import ply
 from tqdm import tqdm
+import math
 import numpy as np
 import os
 import shutil
 
 KITTI_CARLA_DIR = '/home/jay/datasets/KITTI-CARLA'
 OUTPUT_DIR = '/home/jay/datasets/KITTI-CARLA-KITTI-format'
+
+CAMERA_FOV = 72
+IMAGE_SIZE_X = 1392
+IMAGE_SIZE_Y = 1024
 
 
 def convert_ply_to_bin(ply_dir, output_bin_dir):
@@ -23,6 +28,14 @@ def convert_ply_to_bin(ply_dir, output_bin_dir):
         xyzc = np.vstack([data[axis] for axis in ply_field_names[:4]]).T     # (N, 4)
         output_file = os.path.basename(ply_file).lstrip('frame_').rstrip('.ply') + '.bin'
         xyzc.astype('float32').tofile(os.path.join(output_bin_dir, output_file))
+
+def compute_intrinsics(camera_fov, image_size_x, image_size_y):
+    focal_length = image_size_x / (2 * math.tan(camera_fov * math.pi / 360))
+    center_x = image_size_x / 2
+    center_y = image_size_y / 2
+    return np.array([[focal_length, 0, center_x],
+                     [0, focal_length, center_y],
+                     [0, 0, 1]])
 
 
 def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
@@ -63,6 +76,23 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir):
 
         with open(os.path.join(output_sequences_dir, town, 'times.txt'), 'w') as f:
             f.writelines(lines)
+
+        # Generate calibration file
+        print('  Calibration')
+        K = compute_intrinsics(CAMERA_FOV, IMAGE_SIZE_X, IMAGE_SIZE_Y)
+        Ps = [np.hstack([K, np.zeros((3, 1))])] * 4
+
+        with open(os.path.join(input_town_dir, 'generated', 'lidar_to_cam0.txt'), 'r') as f:
+            Tr = f.readlines()[1]
+
+        with open(os.path.join(output_sequences_dir, town, 'calib.txt'), 'w') as f:
+            for i, P in enumerate(Ps):
+                f.write(f'P{i}: {" ".join(map(str, P.reshape(-1)))}\n')
+            # TODO: Tr_velo_to_cam is currently set to left color camera due
+            #       to differences in KITTI and KITTI-CARLA coordinate
+            #       systems. So this calib file would not work for other
+            #       cameras.
+            f.write('Tr: ' + Tr)
 
 
 if __name__ == '__main__':
