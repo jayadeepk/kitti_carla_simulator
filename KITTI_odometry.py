@@ -108,6 +108,20 @@ def convert_to_kitti_odometry_format(kitti_carla_dir, output_dir, config):
         with open(os.path.join(input_town_dir, 'generated', 'lidar_to_cam0.txt'), 'r') as f:
             Tr = f.readlines()[1]
 
+            R = np.array([0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0]).reshape(3, 3)
+            R = np.hstack([R, np.zeros((3, 1))])
+            R = np.vstack([R, np.array([0.0, 0.0, 0.0, 1.0])])
+
+            Tr = Tr.strip().split(' ')
+            Tr = np.array([float(x) for x in Tr]).reshape(3, 4)
+            Tr = np.vstack([Tr, np.array([0.0, 0.0, 0.0, 1.0])])
+
+            # Tr = R x Tr
+            Tr = np.dot(R, Tr)
+            Tr = Tr[:3, :4]
+            Tr = Tr.flatten().tolist()
+            Tr = ' '.join(map(str, Tr))
+
         with open(os.path.join(output_sequences_dir, town, 'calib.txt'), 'w') as f:
             for i, P in enumerate(Ps):
                 f.write(f'P{i}: {" ".join(map(str, P.reshape(-1)))}\n')
