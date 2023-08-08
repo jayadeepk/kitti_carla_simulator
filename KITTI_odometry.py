@@ -35,10 +35,10 @@ def convert_ply_to_bin(ply_dir, output_bin_dir):
         output_file = os.path.basename(ply_file).lstrip('frame_').rstrip('.ply') + '.bin'
         xyzc.astype('float32').tofile(os.path.join(output_bin_dir, output_file))
 
-def compute_intrinsics(camera_fov, image_size_x, image_size_y):
-    focal_length = image_size_x / (2 * math.tan(camera_fov * math.pi / 360))
-    center_x = image_size_x / 2
-    center_y = image_size_y / 2
+def compute_intrinsics():
+    focal_length = IMAGE_SIZE_X / (2 * math.tan(CAMERA_FOV * math.pi / 360))
+    center_x = TARGET_IMAGE_SIZE_X / 2
+    center_y = TARGET_IMAGE_SIZE_Y / 2
     return np.array([[focal_length, 0, center_x],
                      [0, focal_length, center_y],
                      [0, 0, 1]])
@@ -58,7 +58,7 @@ def crop_image(image_path, config):
                     return img
 
 
-def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir, config):
+def convert_to_kitti_odometry_format(kitti_carla_dir, output_dir, config):
     output_sequences_dir = os.path.join(output_dir, 'sequences')
     for town in os.listdir(kitti_carla_dir):
         print(town)
@@ -102,7 +102,7 @@ def convert_kitti_carla_to_kitti_format(kitti_carla_dir, output_dir, config):
 
         # Generate calibration file
         print('  Calibration')
-        K = compute_intrinsics(CAMERA_FOV, IMAGE_SIZE_X, IMAGE_SIZE_Y)
+        K = compute_intrinsics()
         Ps = [np.hstack([K, np.zeros((3, 1))])] * 4
 
         with open(os.path.join(input_town_dir, 'generated', 'lidar_to_cam0.txt'), 'r') as f:
@@ -123,4 +123,4 @@ if __name__ == '__main__':
         'target_image_size_x': TARGET_IMAGE_SIZE_X,
         'target_image_size_y': TARGET_IMAGE_SIZE_Y,
     }
-    convert_kitti_carla_to_kitti_format(KITTI_CARLA_DIR, OUTPUT_DIR, config)
+    convert_to_kitti_odometry_format(KITTI_CARLA_DIR, OUTPUT_DIR, config)

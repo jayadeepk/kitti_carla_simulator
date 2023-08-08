@@ -1,3 +1,4 @@
 numpy
 tqdm
 carla==0.9.14
+Pillow-SIMD
