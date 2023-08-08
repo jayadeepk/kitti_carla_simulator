@@ -9,7 +9,6 @@ from tqdm import tqdm
 import math
 import numpy as np
 import os
-import shutil
 
 KITTI_CARLA_DIR = '/home/jay/datasets/KITTI-CARLA'
 OUTPUT_DIR = '/home/jay/datasets/KITTI-CARLA-KITTI-format'
@@ -61,11 +60,12 @@ def crop_image(image_path, config):
 def convert_to_kitti_odometry_format(kitti_carla_dir, output_dir, config):
     output_sequences_dir = os.path.join(output_dir, 'sequences')
     for town in os.listdir(kitti_carla_dir):
-        print(town)
+        sequence = str(int(town.lstrip('Town')) + 49)
+
         input_town_dir = os.path.join(kitti_carla_dir, town)
-        output_velodyne_dir = os.path.join(output_sequences_dir, town, 'velodyne')
-        output_image_left_dir = os.path.join(output_sequences_dir, town, 'image_2')
-        output_image_right_dir = os.path.join(output_sequences_dir, town, 'image_3')
+        output_velodyne_dir = os.path.join(output_sequences_dir, sequence, 'velodyne')
+        output_image_left_dir = os.path.join(output_sequences_dir, sequence, 'image_2')
+        output_image_right_dir = os.path.join(output_sequences_dir, sequence, 'image_3')
 
         os.makedirs(output_velodyne_dir, exist_ok=True)
         os.makedirs(output_image_left_dir, exist_ok=True)
@@ -97,7 +97,7 @@ def convert_to_kitti_odometry_format(kitti_carla_dir, output_dir, config):
             lines = lines[1:]
             lines = [line.split(' ')[1] for line in lines]
 
-        with open(os.path.join(output_sequences_dir, town, 'times.txt'), 'w') as f:
+        with open(os.path.join(output_sequences_dir, sequence, 'times.txt'), 'w') as f:
             f.writelines(lines)
 
         # Generate calibration file
@@ -122,7 +122,7 @@ def convert_to_kitti_odometry_format(kitti_carla_dir, output_dir, config):
             Tr = Tr.flatten().tolist()
             Tr = ' '.join(map(str, Tr))
 
-        with open(os.path.join(output_sequences_dir, town, 'calib.txt'), 'w') as f:
+        with open(os.path.join(output_sequences_dir, sequence, 'calib.txt'), 'w') as f:
             for i, P in enumerate(Ps):
                 f.write(f'P{i}: {" ".join(map(str, P.reshape(-1)))}\n')
             # TODO: Tr_velo_to_cam is currently set to left color camera due
