@@ -87,16 +87,10 @@ def main():
 
             # Create our sensors
             gen.RGB.sensor_id_glob = 0
-            gen.SS.sensor_id_glob = 10
-            gen.Depth.sensor_id_glob = 20
             gen.HDL64E.sensor_id_glob = 100
             VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
             cam0 = gen.RGB(KITTI, world, actor_list, folder_output, cam0_transform)
             cam1 = gen.RGB(KITTI, world, actor_list, folder_output, cam1_transform)
-            cam0_ss = gen.SS(KITTI, world, actor_list, folder_output, cam0_transform)
-            cam1_ss = gen.SS(KITTI, world, actor_list, folder_output, cam1_transform)
-            cam0_depth = gen.Depth(KITTI, world, actor_list, folder_output, cam0_transform)
-            cam1_depth = gen.Depth(KITTI, world, actor_list, folder_output, cam1_transform)
 
             # Export LiDAR to cam0 transformation
             tf_lidar_cam0 = gen.transform_lidar_to_camera(lidar_transform, cam0_transform)
@@ -134,10 +128,6 @@ def main():
                 frame_current = VelodyneHDL64.save()
                 cam0.save()
                 cam1.save()
-                cam0_ss.save()
-                cam1_ss.save()
-                cam0_depth.save()
-                cam1_depth.save()
                 gen.follow(KITTI.get_transform(), world)
                 world.tick()    # Pass to the next simulator frame
 

@@ -109,44 +109,6 @@ class RGB(Camera):
         Camera.save(self)
 
 
-class SS(Camera):
-    sensor_id_glob = 10
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
-        Camera.__init__(self, vehicle, world, actor_list, folder_output, transform)
-
-    def set_attributes(self, blueprint_library):
-        camera_ss_bp = blueprint_library.find('sensor.camera.semantic_segmentation')
-
-        camera_ss_bp.set_attribute('image_size_x', '1392')
-        camera_ss_bp.set_attribute('image_size_y', '1024')
-        camera_ss_bp.set_attribute('fov', '72') #72 degrees # Always fov on width even if width is different than height
-        camera_ss_bp.set_attribute('sensor_tick', '0.10') # 10Hz camera
-        return camera_ss_bp
-
-    def save(self, color_converter=carla.ColorConverter.CityScapesPalette):
-        Camera.save(self, color_converter)
-
-
-class Depth(Camera):
-    sensor_id_glob = 20
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
-        Camera.__init__(self, vehicle, world, actor_list, folder_output, transform)
-
-    def set_attributes(self, blueprint_library):
-        camera_ss_bp = blueprint_library.find('sensor.camera.depth')
-
-        camera_ss_bp.set_attribute('image_size_x', '1392')
-        camera_ss_bp.set_attribute('image_size_y', '1024')
-        camera_ss_bp.set_attribute('fov', '72') #72 degrees # Always fov on width even if width is different than height
-        camera_ss_bp.set_attribute('sensor_tick', '0.10') # 10Hz camera
-        return camera_ss_bp
-
-    #def save(self, color_converter=carla.ColorConverter.Depth):
-    def save(self):
-    #    Camera.save(self, color_converter)
-        Camera.save(self)
-
-
 class HDL64E(Sensor):
     sensor_id_glob = 100
     def __init__(self, vehicle, world, actor_list, folder_output, transform):
