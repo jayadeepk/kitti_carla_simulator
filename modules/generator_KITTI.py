@@ -11,7 +11,7 @@ try:
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-    
+
     sys.path.append(glob.glob('../../')[0])
 
 except IndexError:
@@ -104,10 +104,10 @@ class RGB(Camera):
         camera_bp.set_attribute('lens_x_size', '0')
         camera_bp.set_attribute('lens_y_size', '0')
         return camera_bp
-     
+
     def save(self):
         Camera.save(self)
-        
+
 
 class SS(Camera):
     sensor_id_glob = 10
@@ -160,7 +160,7 @@ class HDL64E(Sensor):
         self.sensor_id = self.__class__.sensor_id_glob;
         self.__class__.sensor_id_glob += 1
         self.folder_output = folder_output
-        
+
         self.i_packet = 0
         self.i_frame = 0
 
@@ -214,11 +214,11 @@ class HDL64E(Sensor):
             nbr_pts = len(data.raw_data)//24 #4 float32 and 2 uint
             self.list_ts.append(np.broadcast_to(ts, nbr_pts))
             buffer = np.frombuffer(data.raw_data, dtype=np.dtype([('x','f4'),('y','f4'),('z','f4'),('cos','f4'),('index','u4'),('semantic','u4')]))
-            
+
             # We're negating the y to correctly visualize a world that matches what we see in Unreal since we uses a right-handed coordinate system
             self.list_pts.append(np.array([buffer[:]['x'], -buffer[:]['y'], buffer[:]['z'], buffer[:]['cos']]))
             self.list_semantic.append(np.array([buffer[:]['index'], buffer[:]['semantic']]))
-            
+
             self.i_packet += 1
             if self.i_packet%self.packet_per_frame == 0:
                 pts_all = np.hstack(self.list_pts)
@@ -252,7 +252,7 @@ class HDL64E(Sensor):
             self.list_trajectory.append(struct.pack('f', ts))
 
         return self.i_frame
-        
+
     def save_poses(self):
         ply_file_path = self.calib_output+"/poses_lidar.ply"
         trajectory_bytes = b''.join(self.list_trajectory)
@@ -261,7 +261,7 @@ class HDL64E(Sensor):
         with open(ply_file_path, 'ab') as posfile:
             posfile.write(trajectory_bytes)
         print("Export : "+ply_file_path)
-        
+
 
     def set_attributes(self, blueprint_library):
         lidar_bp = blueprint_library.find('sensor.lidar.ray_cast_semantic')
@@ -314,13 +314,13 @@ def screenshot(vehicle, world, actor_list, folder_output, transform):
     del actor_list[-1]
 
 
-            
+
 def spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id):
         world = client.get_world()
 
         traffic_manager = client.get_trafficmanager()
         traffic_manager.set_global_distance_to_leading_vehicle(1.0)
-        
+
         #traffic_manager.set_hybrid_physics_mode(True)
         #traffic_manager.set_random_device_seed(args.seed)
 
@@ -476,7 +476,7 @@ def spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id):
 
 def follow(transform, world):    # Transforme carla.Location(x,y,z) from sensor to world frame
     rot = transform.rotation
-    rot.pitch = -25 
+    rot.pitch = -25
     world.get_spectator().set_transform(carla.Transform(transform.transform(carla.Location(x=-15,y=0,z=5)), rot))
 
 

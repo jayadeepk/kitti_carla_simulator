@@ -2,7 +2,6 @@ import glob
 import os
 import sys
 from pathlib import Path
-import random
 
 try:
     sys.path.append(glob.glob('%s/PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
@@ -31,15 +30,15 @@ def main():
     vehicles_list = []
     all_walkers_id = []
     data_date = date.today().strftime("%Y_%m_%d")
-    
+
     spawn_points = [23,46,0,125,53,257,62]
-    
+
     init_settings = None
 
     try:
         client = carla.Client('localhost', 2000)
         init_settings = carla.WorldSettings()
-        
+
         for i_map in [0, 1, 2, 3, 4, 5, 6]: #7 maps from Town01 to Town07
             client.set_timeout(100.0)
             print("Map Town0"+str(i_map+1))
@@ -47,10 +46,10 @@ def main():
             folder_output = "KITTI_Dataset_CARLA_v%s/%s/generated" %(client.get_client_version(), world.get_map().name)
             os.makedirs(folder_output) if not os.path.exists(folder_output) else [os.remove(f) for f in glob.glob(folder_output+"/*") if os.path.isfile(f)]
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
-            
+
             # Weather
             world.set_weather(carla.WeatherParameters.WetCloudyNoon)
-            
+
             # Set Synchronous mode
             settings = world.get_settings()
             settings.synchronous_mode = True
@@ -106,7 +105,7 @@ def main():
                 posfile.write(str(tf_lidar_cam0[0][0])+" "+str(tf_lidar_cam0[0][1])+" "+str(tf_lidar_cam0[0][2])+" "+str(tf_lidar_cam0[0][3])+" ")
                 posfile.write(str(tf_lidar_cam0[1][0])+" "+str(tf_lidar_cam0[1][1])+" "+str(tf_lidar_cam0[1][2])+" "+str(tf_lidar_cam0[1][3])+" ")
                 posfile.write(str(tf_lidar_cam0[2][0])+" "+str(tf_lidar_cam0[2][1])+" "+str(tf_lidar_cam0[2][2])+" "+str(tf_lidar_cam0[2][3]))
-            
+
             # Export LiDAR to cam1 transformation
             tf_lidar_cam1 = gen.transform_lidar_to_camera(lidar_transform, cam1_transform)
             with open(folder_output+"/lidar_to_cam1.txt", 'w') as posfile:
@@ -121,13 +120,13 @@ def main():
 
             # Pass to the next simulator frame to spawn sensors and to retrieve first data
             world.tick()
-            
+
             VelodyneHDL64.init()
             gen.follow(KITTI.get_transform(), world)
-            
+
             # All sensors produce first data at the same time (this ts)
             gen.Sensor.initial_ts = world.get_snapshot().timestamp.elapsed_seconds
-            
+
             start_record = time.time()
             print("Start record : ")
             frame_current = 0
@@ -141,15 +140,15 @@ def main():
                 cam1_depth.save()
                 gen.follow(KITTI.get_transform(), world)
                 world.tick()    # Pass to the next simulator frame
-            
+
             VelodyneHDL64.save_poses()
             client.stop_recorder()
             print("Stop record")
-            
+
             print('Destroying %d vehicles' % len(vehicles_list))
             client.apply_batch([carla.command.DestroyActor(x) for x in vehicles_list])
             vehicles_list.clear()
-            
+
             # Stop walker controllers (list is [controller, actor, controller, actor ...])
             all_actors = world.get_actors(all_walkers_id)
             for i in range(0, len(all_walkers_id), 2):
@@ -157,22 +156,22 @@ def main():
             print('Destroying %d walkers' % (len(all_walkers_id)//2))
             client.apply_batch([carla.command.DestroyActor(x) for x in all_walkers_id])
             all_walkers_id.clear()
-                
+
             print('Destroying KITTI')
             client.apply_batch([carla.command.DestroyActor(x) for x in actor_list])
             actor_list.clear()
-                
+
             print("Elapsed time : ", time.time()-start_record)
             print()
-                
+
             time.sleep(2.0)
 
     finally:
         print("Elapsed total time : ", time.time()-start_record_full)
         world.apply_settings(init_settings)
-        
+
         time.sleep(2.0)
-        
+
 
 if __name__ == '__main__':
     main()
