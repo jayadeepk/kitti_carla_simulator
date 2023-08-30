@@ -48,7 +48,10 @@ class Sensor:
         self.folder_output = folder_output
         self.ts_tmp = 0
 
-class Camera(Sensor):
+
+class RGB(Sensor):
+    sensor_id_glob = 0
+
     def __init__(self, vehicle, world, actor_list, folder_output, transform):
         Sensor.__init__(self, vehicle, world, actor_list, folder_output, transform)
         self.sensor_frame_id = 0
@@ -59,32 +62,6 @@ class Camera(Sensor):
             file.write("# frame_id timestamp\n")
 
         print('created %s' % self.sensor)
-
-    def save(self, color_converter=carla.ColorConverter.Raw):
-        while not self.queue.empty():
-            data = self.queue.get()
-
-            ts = data.timestamp-Sensor.initial_ts
-            if ts - self.ts_tmp > 0.11 or (ts - self.ts_tmp) < 0: #check for 10Hz camera acquisition
-                print("[Error in timestamp] Camera: previous_ts %f -> ts %f" %(self.ts_tmp, ts))
-                sys.exit()
-            self.ts_tmp = ts
-
-            file_path = self.frame_output+"/%04d_%d.png" %(self.sensor_frame_id, self.sensor_id)
-            x = threading.Thread(target=data.save_to_disk, args=(file_path, color_converter))
-            x.start()
-            print("Export : "+file_path)
-
-            if self.sensor_id == 0:
-                with open(self.folder_output+"/full_ts_camera.txt", 'a') as file:
-                    file.write(str(self.sensor_frame_id)+" "+str(data.timestamp - Sensor.initial_ts)+"\n") #bug in CARLA 0.9.10: timestamp of camera is one tick late. 1 tick = 1/fps_simu seconds
-            self.sensor_frame_id += 1
-
-class RGB(Camera):
-    sensor_id_glob = 0
-
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
-        Camera.__init__(self, vehicle, world, actor_list, folder_output, transform)
 
     def set_attributes(self, blueprint_library):
         camera_bp = blueprint_library.find('sensor.camera.rgb')
@@ -105,8 +82,25 @@ class RGB(Camera):
         camera_bp.set_attribute('lens_y_size', '0')
         return camera_bp
 
-    def save(self):
-        Camera.save(self)
+    def save(self, color_converter=carla.ColorConverter.Raw):
+        while not self.queue.empty():
+            data = self.queue.get()
+
+            ts = data.timestamp-Sensor.initial_ts
+            if ts - self.ts_tmp > 0.11 or (ts - self.ts_tmp) < 0: #check for 10Hz camera acquisition
+                print("[Error in timestamp] Camera: previous_ts %f -> ts %f" %(self.ts_tmp, ts))
+                sys.exit()
+            self.ts_tmp = ts
+
+            file_path = self.frame_output+"/%04d_%d.png" %(self.sensor_frame_id, self.sensor_id)
+            x = threading.Thread(target=data.save_to_disk, args=(file_path, color_converter))
+            x.start()
+            print("Export : "+file_path)
+
+            if self.sensor_id == 0:
+                with open(self.folder_output+"/full_ts_camera.txt", 'a') as file:
+                    file.write(str(self.sensor_frame_id)+" "+str(data.timestamp - Sensor.initial_ts)+"\n") #bug in CARLA 0.9.10: timestamp of camera is one tick late. 1 tick = 1/fps_simu seconds
+            self.sensor_frame_id += 1
 
 
 class HDL64E(Sensor):
