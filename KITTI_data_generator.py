@@ -17,6 +17,14 @@ import time
 from datetime import date
 from modules import generator_KITTI as gen
 
+CONFIG = {
+    'camera_extrinsics': [
+        {'x': 0.30, 'y': 0.0,   'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
+        {'x': 0.30, 'y': 0.50,  'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
+        {'x': 0.30, 'y': -0.50, 'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
+    ]
+}
+
 def main():
     start_record_full = time.time()
 
@@ -79,8 +87,20 @@ def main():
 
             # Set sensors transformation from KITTI
             lidar_transform     = carla.Transform(carla.Location(x=0, y=0, z=1.80), carla.Rotation(pitch=0, yaw=180, roll=0))
-            cam0_transform = carla.Transform(carla.Location(x=0.30, y=0, z=1.70), carla.Rotation(pitch=0, yaw=0, roll=0))
-            cam1_transform = carla.Transform(carla.Location(x=0.30, y=0.50, z=1.70), carla.Rotation(pitch=0, yaw=0, roll=0))
+            cam_transforms = [
+                carla.Transform(
+                    carla.Location(
+                        x=CONFIG['camera_extrinsics'][i]['x'],
+                        y=CONFIG['camera_extrinsics'][i]['y'],
+                        z=CONFIG['camera_extrinsics'][i]['z']
+                    ),
+                    carla.Rotation(
+                        pitch=CONFIG['camera_extrinsics'][i]['pitch'],
+                        yaw=CONFIG['camera_extrinsics'][i]['yaw'],
+                        roll=CONFIG['camera_extrinsics'][i]['roll']
+                    )
+                ) for i in range(len(CONFIG['camera_extrinsics']))
+            ]
 
             # Take a screenshot
             gen.screenshot(KITTI, world, actor_list, folder_output, carla.Transform(carla.Location(x=0.0, y=0, z=2.0), carla.Rotation(pitch=0, yaw=0, roll=0)))
@@ -89,24 +109,16 @@ def main():
             gen.RGB.sensor_id_glob = 0
             gen.HDL64E.sensor_id_glob = 100
             VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
-            cam0 = gen.RGB(KITTI, world, actor_list, folder_output, cam0_transform)
-            cam1 = gen.RGB(KITTI, world, actor_list, folder_output, cam1_transform)
+            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i]) for i in range(len(cam_transforms))]
 
-            # Export LiDAR to cam0 transformation
-            tf_lidar_cam0 = gen.transform_lidar_to_camera(lidar_transform, cam0_transform)
-            with open(folder_output+"/lidar_to_cam0.txt", 'w') as posfile:
-                posfile.write("#R(0,0) R(0,1) R(0,2) t(0) R(1,0) R(1,1) R(1,2) t(1) R(2,0) R(2,1) R(2,2) t(2)\n")
-                posfile.write(str(tf_lidar_cam0[0][0])+" "+str(tf_lidar_cam0[0][1])+" "+str(tf_lidar_cam0[0][2])+" "+str(tf_lidar_cam0[0][3])+" ")
-                posfile.write(str(tf_lidar_cam0[1][0])+" "+str(tf_lidar_cam0[1][1])+" "+str(tf_lidar_cam0[1][2])+" "+str(tf_lidar_cam0[1][3])+" ")
-                posfile.write(str(tf_lidar_cam0[2][0])+" "+str(tf_lidar_cam0[2][1])+" "+str(tf_lidar_cam0[2][2])+" "+str(tf_lidar_cam0[2][3]))
-
-            # Export LiDAR to cam1 transformation
-            tf_lidar_cam1 = gen.transform_lidar_to_camera(lidar_transform, cam1_transform)
-            with open(folder_output+"/lidar_to_cam1.txt", 'w') as posfile:
-                posfile.write("#R(0,0) R(0,1) R(0,2) t(0) R(1,0) R(1,1) R(1,2) t(1) R(2,0) R(2,1) R(2,2) t(2)\n")
-                posfile.write(str(tf_lidar_cam1[0][0])+" "+str(tf_lidar_cam1[0][1])+" "+str(tf_lidar_cam1[0][2])+" "+str(tf_lidar_cam1[0][3])+" ")
-                posfile.write(str(tf_lidar_cam1[1][0])+" "+str(tf_lidar_cam1[1][1])+" "+str(tf_lidar_cam1[1][2])+" "+str(tf_lidar_cam1[1][3])+" ")
-                posfile.write(str(tf_lidar_cam1[2][0])+" "+str(tf_lidar_cam1[2][1])+" "+str(tf_lidar_cam1[2][2])+" "+str(tf_lidar_cam1[2][3]))
+            # Export LiDAR to camera transformations
+            for i, cam_transform in enumerate(cam_transforms):
+                tf_lidar_cam = gen.transform_lidar_to_camera(lidar_transform, cam_transform)
+                with open(folder_output+f"/lidar_to_cam{i}.txt", 'w') as posfile:
+                    posfile.write("#R(0,0) R(0,1) R(0,2) t(0) R(1,0) R(1,1) R(1,2) t(1) R(2,0) R(2,1) R(2,2) t(2)\n")
+                    posfile.write(str(tf_lidar_cam[0][0])+" "+str(tf_lidar_cam[0][1])+" "+str(tf_lidar_cam[0][2])+" "+str(tf_lidar_cam[0][3])+" ")
+                    posfile.write(str(tf_lidar_cam[1][0])+" "+str(tf_lidar_cam[1][1])+" "+str(tf_lidar_cam[1][2])+" "+str(tf_lidar_cam[1][3])+" ")
+                    posfile.write(str(tf_lidar_cam[2][0])+" "+str(tf_lidar_cam[2][1])+" "+str(tf_lidar_cam[2][2])+" "+str(tf_lidar_cam[2][3]))
 
 
             # Launch KITTI
@@ -126,8 +138,8 @@ def main():
             frame_current = 0
             while (frame_current < nbr_frame):
                 frame_current = VelodyneHDL64.save()
-                cam0.save()
-                cam1.save()
+                for cam in cams:
+                    cam.save()
                 gen.follow(KITTI.get_transform(), world)
                 world.tick()    # Pass to the next simulator frame
 
