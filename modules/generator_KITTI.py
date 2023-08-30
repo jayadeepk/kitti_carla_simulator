@@ -55,7 +55,7 @@ class RGB(Sensor):
     def __init__(self, vehicle, world, actor_list, folder_output, transform):
         Sensor.__init__(self, vehicle, world, actor_list, folder_output, transform)
         self.sensor_frame_id = 0
-        self.frame_output = self.folder_output+"/images_%s" %str.lower(self.__class__.__name__)
+        self.frame_output = self.folder_output+"/images_%d" % self.sensor_id
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
 
         with open(self.folder_output+"/full_ts_camera.txt", 'w') as file:
@@ -92,7 +92,7 @@ class RGB(Sensor):
                 sys.exit()
             self.ts_tmp = ts
 
-            file_path = self.frame_output+"/%04d_%d.png" %(self.sensor_frame_id, self.sensor_id)
+            file_path = self.frame_output+"/%04d.png" % self.sensor_frame_id
             x = threading.Thread(target=data.save_to_disk, args=(file_path, color_converter))
             x.start()
             print("Export : "+file_path)
