@@ -18,6 +18,7 @@ from datetime import date
 from modules import generator_KITTI as gen
 
 CONFIG = {
+    'lidar_extrinsics': {'x': 0.0, 'y': 0.0, 'z': 1.80, 'pitch': 0.0, 'yaw': 180.0, 'roll': 0.0},
     'camera_extrinsics': [
         {'x': 0.30, 'y': 0.0,   'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
         {'x': 0.30, 'y': 0.50,  'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
@@ -86,7 +87,18 @@ def main():
             print("KITTI stopped")
 
             # Set sensors transformation from KITTI
-            lidar_transform     = carla.Transform(carla.Location(x=0, y=0, z=1.80), carla.Rotation(pitch=0, yaw=180, roll=0))
+            lidar_transform = carla.Transform(
+                carla.Location(
+                    x=CONFIG['lidar_extrinsics']['x'],
+                    y=CONFIG['lidar_extrinsics']['y'],
+                    z=CONFIG['lidar_extrinsics']['z']
+                ),
+                carla.Rotation(
+                    pitch=CONFIG['lidar_extrinsics']['pitch'],
+                    yaw=CONFIG['lidar_extrinsics']['yaw'],
+                    roll=CONFIG['lidar_extrinsics']['roll']
+                )
+            )
             cam_transforms = [
                 carla.Transform(
                     carla.Location(
