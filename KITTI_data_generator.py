@@ -1,4 +1,6 @@
 import glob
+import math
+import numpy as np
 import os
 import sys
 from pathlib import Path
@@ -124,17 +126,43 @@ def main():
             # Create our sensors
             gen.RGB.sensor_id_glob = 0
             gen.HDL64E.sensor_id_glob = 100
-            VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
+            VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform, CONFIG)
             cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], CONFIG) for i in range(len(cam_transforms))]
 
             # Export LiDAR to camera transformations
+            Ks = []
+            Trs = []
+            to_string = lambda array: ' '.join(map(str, array.flatten().tolist()))
             for i, cam_transform in enumerate(cam_transforms):
-                tf_lidar_cam = gen.transform_lidar_to_camera(lidar_transform, cam_transform)
-                with open(folder_output+f"/lidar_to_cam{i}.txt", 'w') as posfile:
-                    posfile.write("#R(0,0) R(0,1) R(0,2) t(0) R(1,0) R(1,1) R(1,2) t(1) R(2,0) R(2,1) R(2,2) t(2)\n")
-                    posfile.write(str(tf_lidar_cam[0][0])+" "+str(tf_lidar_cam[0][1])+" "+str(tf_lidar_cam[0][2])+" "+str(tf_lidar_cam[0][3])+" ")
-                    posfile.write(str(tf_lidar_cam[1][0])+" "+str(tf_lidar_cam[1][1])+" "+str(tf_lidar_cam[1][2])+" "+str(tf_lidar_cam[1][3])+" ")
-                    posfile.write(str(tf_lidar_cam[2][0])+" "+str(tf_lidar_cam[2][1])+" "+str(tf_lidar_cam[2][2])+" "+str(tf_lidar_cam[2][3]))
+                focal_length = CONFIG['rgb_image_size_x'] / (2 * math.tan(CONFIG['rgb_fov'] * math.pi / 360))
+                center_x = CONFIG['rgb_image_size_x'] / 2
+                center_y = CONFIG['rgb_image_size_y'] / 2
+                Ks.append(np.array([[focal_length, 0, center_x],
+                                    [0, focal_length, center_y],
+                                    [0, 0, 1]]))
+
+                R = np.array([0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0]).reshape(3, 3)
+                R = np.hstack([R, np.zeros((3, 1))])
+                R = np.vstack([R, np.array([0.0, 0.0, 0.0, 1.0])])
+
+                Tr = gen.transform_lidar_to_camera(lidar_transform, cam_transform)
+                Tr = np.dot(R, Tr)
+                Tr = Tr[:3, :4]
+                Trs.append(Tr)
+
+            # KITTI style calibration file (only supports one camera)
+            with open(folder_output+f"/calib.txt", 'w') as f:
+                P = np.hstack([Ks[0], np.zeros((3, 1))])
+                for i in range(4):
+                    f.write(f'P{i}: {to_string(P)}\n')
+                f.write(f'Tr: {to_string(Trs[0])}')
+
+            # New style calibration file
+            with open(folder_output+f"/calib2.txt", 'w') as posfile:
+                for i, K in enumerate(Ks):
+                    posfile.write(f'K{i}: {to_string(K)}\n')
+                for i, Tr in enumerate(Trs):
+                    posfile.write(f'Tr{i}: {to_string(Tr)}\n')
 
 
             # Launch KITTI
