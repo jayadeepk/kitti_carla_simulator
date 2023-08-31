@@ -23,7 +23,8 @@ CONFIG = {
         {'x': 0.30, 'y': 0.0,   'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
         {'x': 0.30, 'y': 0.50,  'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
         {'x': 0.30, 'y': -0.50, 'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
-    ]
+    ],
+    'sequence_start': 60,
 }
 
 def main():
@@ -52,7 +53,7 @@ def main():
             client.set_timeout(100.0)
             print("Map Town0"+str(i_map+1))
             world = client.load_world("Town0"+str(i_map+1))
-            folder_output = "KITTI_Dataset_CARLA_v%s/%s/generated" %(client.get_client_version(), world.get_map().name)
+            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), CONFIG['sequence_start']+i_map)
             os.makedirs(folder_output) if not os.path.exists(folder_output) else [os.remove(f) for f in glob.glob(folder_output+"/*") if os.path.isfile(f)]
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
 

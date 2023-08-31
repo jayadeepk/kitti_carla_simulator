@@ -55,11 +55,11 @@ class RGB(Sensor):
     def __init__(self, vehicle, world, actor_list, folder_output, transform):
         Sensor.__init__(self, vehicle, world, actor_list, folder_output, transform)
         self.sensor_frame_id = 0
-        self.frame_output = self.folder_output+"/images_%d" % self.sensor_id
+        self.frame_output = self.folder_output+"/image_%d" % self.sensor_id
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
 
-        with open(self.folder_output+"/full_ts_camera.txt", 'w') as file:
-            file.write("# frame_id timestamp\n")
+        if os.path.exists(self.folder_output + '/times.txt'):
+            os.remove(self.folder_output + '/times.txt')
 
         print('created %s' % self.sensor)
 
@@ -92,14 +92,15 @@ class RGB(Sensor):
                 sys.exit()
             self.ts_tmp = ts
 
-            file_path = self.frame_output+"/%04d.png" % self.sensor_frame_id
+            file_path = self.frame_output+"/%06d.png" % self.sensor_frame_id
             x = threading.Thread(target=data.save_to_disk, args=(file_path, color_converter))
             x.start()
             print("Export : "+file_path)
 
             if self.sensor_id == 0:
-                with open(self.folder_output+"/full_ts_camera.txt", 'a') as file:
-                    file.write(str(self.sensor_frame_id)+" "+str(data.timestamp - Sensor.initial_ts)+"\n") #bug in CARLA 0.9.10: timestamp of camera is one tick late. 1 tick = 1/fps_simu seconds
+                with open(self.folder_output + '/times.txt', 'a') as file:
+                    # TODO: Check if the one-tick-late bug is still in 0.9.14
+                    file.write(str(data.timestamp - Sensor.initial_ts) + '\n') #bug in CARLA 0.9.10: timestamp of camera is one tick late. 1 tick = 1/fps_simu seconds
             self.sensor_frame_id += 1
 
 
@@ -123,7 +124,7 @@ class HDL64E(Sensor):
         self.initial_loc = np.zeros(3)
         self.initial_rot = np.identity(3)
         self.calib_output = folder_output
-        self.frame_output = folder_output+"/frames"
+        self.frame_output = folder_output+"/velodyne"
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
 
         settings = world.get_settings()
@@ -144,8 +145,6 @@ class HDL64E(Sensor):
         self.end_header = '\n'.join(header)+'\n'
 
         self.list_pts = []
-        self.list_semantic = []
-        self.list_ts = []
         self.list_trajectory = []
 
         self.ts_tmp = 0.0
@@ -167,31 +166,20 @@ class HDL64E(Sensor):
 
             self.ts_tmp = ts
 
-            nbr_pts = len(data.raw_data)//24 #4 float32 and 2 uint
-            self.list_ts.append(np.broadcast_to(ts, nbr_pts))
-            buffer = np.frombuffer(data.raw_data, dtype=np.dtype([('x','f4'),('y','f4'),('z','f4'),('cos','f4'),('index','u4'),('semantic','u4')]))
+            buffer = np.frombuffer(data.raw_data, dtype=np.dtype([('x','f4'),('y','f4'),('z','f4'),('cos','f4')]))
 
             # We're negating the y to correctly visualize a world that matches what we see in Unreal since we uses a right-handed coordinate system
             self.list_pts.append(np.array([buffer[:]['x'], -buffer[:]['y'], buffer[:]['z'], buffer[:]['cos']]))
-            self.list_semantic.append(np.array([buffer[:]['index'], buffer[:]['semantic']]))
 
             self.i_packet += 1
             if self.i_packet%self.packet_per_frame == 0:
                 pts_all = np.hstack(self.list_pts)
                 pts_all[0:3,:] = self.rotation_lidar_transpose.dot(pts_all[0:3,:])
                 pts_all = pts_all.T
-                semantic_all = np.hstack(self.list_semantic).T
-                ts_all = np.concatenate(self.list_ts)
                 self.list_pts = []
-                self.list_semantic = []
-                self.list_ts = []
 
-                ply_file_path = self.frame_output+"/frame_%04d.ply" %self.i_frame
-
-                if ply.write_ply(ply_file_path, [np.float32(pts_all), np.float32(ts_all), np.uint32(semantic_all)], ['x','y','z','cos_angle_lidar_surface','timestamp','instance','semantic']):
-                    print("Export : "+ply_file_path)
-                else:
-                    print('ply.write_ply() failed')
+                velodyne_bin_path = os.path.join(self.frame_output, '%06d.bin' % self.i_frame)
+                pts_all.astype(np.float32).tofile(velodyne_bin_path)
 
                 self.i_frame += 1
 
@@ -220,7 +208,7 @@ class HDL64E(Sensor):
 
 
     def set_attributes(self, blueprint_library):
-        lidar_bp = blueprint_library.find('sensor.lidar.ray_cast_semantic')
+        lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
         lidar_bp.set_attribute('channels', '64')
         lidar_bp.set_attribute('range', '80.0')    # 80.0 m
         lidar_bp.set_attribute('points_per_second', str(64/0.00004608))
