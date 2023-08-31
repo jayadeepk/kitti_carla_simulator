@@ -37,9 +37,13 @@ class Sensor:
     initial_loc = carla.Location()
     initial_rot = carla.Rotation()
 
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
+
+class RGB(Sensor):
+    sensor_id_glob = 0
+
+    def __init__(self, vehicle, world, actor_list, folder_output, transform, config):
         self.queue = queue.Queue()
-        self.bp = self.set_attributes(world.get_blueprint_library())
+        self.bp = self.set_attributes(world.get_blueprint_library(), config)
         self.sensor = world.spawn_actor(self.bp, transform, attach_to=vehicle)
         actor_list.append(self.sensor)
         self.sensor.listen(lambda data: sensor_callback(data.timestamp - Sensor.initial_ts, data, self.queue))
@@ -48,12 +52,6 @@ class Sensor:
         self.folder_output = folder_output
         self.ts_tmp = 0
 
-
-class RGB(Sensor):
-    sensor_id_glob = 0
-
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
-        Sensor.__init__(self, vehicle, world, actor_list, folder_output, transform)
         self.sensor_frame_id = 0
         self.frame_output = self.folder_output+"/image_%d" % self.sensor_id
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
@@ -63,12 +61,12 @@ class RGB(Sensor):
 
         print('created %s' % self.sensor)
 
-    def set_attributes(self, blueprint_library):
+    def set_attributes(self, blueprint_library, config):
         camera_bp = blueprint_library.find('sensor.camera.rgb')
 
-        camera_bp.set_attribute('image_size_x', '1392')
-        camera_bp.set_attribute('image_size_y', '1024')
-        camera_bp.set_attribute('fov', '72') #72 degrees # Always fov on width even if width is different than height
+        camera_bp.set_attribute('image_size_x', str(config['rgb_image_size_x']))
+        camera_bp.set_attribute('image_size_y', str(config['rgb_image_size_y']))
+        camera_bp.set_attribute('fov', str(config['rgb_fov'])) # Always fov on width even if width is different than height
         camera_bp.set_attribute('enable_postprocess_effects', 'True')
         camera_bp.set_attribute('sensor_tick', '0.10') # 10Hz camera
         camera_bp.set_attribute('gamma', '2.2')
@@ -106,11 +104,11 @@ class RGB(Sensor):
 
 class HDL64E(Sensor):
     sensor_id_glob = 100
-    def __init__(self, vehicle, world, actor_list, folder_output, transform):
+    def __init__(self, vehicle, world, actor_list, folder_output, transform, config):
         self.rotation_lidar = rotation_carla(transform.rotation)
         self.rotation_lidar_transpose = self.rotation_lidar.T
         self.queue = queue.PriorityQueue()
-        self.bp = self.set_attributes(world.get_blueprint_library())
+        self.bp = self.set_attributes(world.get_blueprint_library(), config)
         self.sensor = world.spawn_actor(self.bp, transform, attach_to=vehicle)
         actor_list.append(self.sensor)
         self.sensor.listen(lambda data: self.queue.put((data.timestamp, data)))
@@ -207,7 +205,7 @@ class HDL64E(Sensor):
         print("Export : "+ply_file_path)
 
 
-    def set_attributes(self, blueprint_library):
+    def set_attributes(self, blueprint_library, config):
         lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
         lidar_bp.set_attribute('channels', '64')
         lidar_bp.set_attribute('range', '80.0')    # 80.0 m
@@ -241,8 +239,8 @@ def transform_lidar_to_camera(lidar_tranform, camera_transform):
     T_lidar_camera = R_camera_vehicle.T.dot(translation_carla(np.array([[lidar_tranform.location.x],[lidar_tranform.location.y],[lidar_tranform.location.z]])-np.array([[camera_transform.location.x],[camera_transform.location.y],[camera_transform.location.z]])))
     return np.vstack((np.hstack((R_lidar_camera, T_lidar_camera)), [0,0,0,1]))
 
-def screenshot(vehicle, world, actor_list, folder_output, transform):
-    sensor = world.spawn_actor(RGB.set_attributes(RGB, world.get_blueprint_library()), transform, attach_to=vehicle)
+def screenshot(vehicle, world, actor_list, folder_output, transform, config):
+    sensor = world.spawn_actor(RGB.set_attributes(RGB, world.get_blueprint_library(), config), transform, attach_to=vehicle)
     actor_list.append(sensor)
     screenshot_queue = queue.Queue()
     sensor.listen(screenshot_queue.put)

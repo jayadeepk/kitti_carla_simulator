@@ -25,6 +25,9 @@ CONFIG = {
         {'x': 0.30, 'y': -0.50, 'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
     ],
     'sequence_start': 60,
+    'rgb_image_size_x': 1242,
+    'rgb_image_size_y': 376,
+    'rgb_fov': 90, # field of view on width
 }
 
 def main():
@@ -116,13 +119,13 @@ def main():
             ]
 
             # Take a screenshot
-            gen.screenshot(KITTI, world, actor_list, folder_output, carla.Transform(carla.Location(x=0.0, y=0, z=2.0), carla.Rotation(pitch=0, yaw=0, roll=0)))
+            gen.screenshot(KITTI, world, actor_list, folder_output, carla.Transform(carla.Location(x=0.0, y=0, z=2.0), carla.Rotation(pitch=0, yaw=0, roll=0)), CONFIG)
 
             # Create our sensors
             gen.RGB.sensor_id_glob = 0
             gen.HDL64E.sensor_id_glob = 100
             VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
-            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i]) for i in range(len(cam_transforms))]
+            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], CONFIG) for i in range(len(cam_transforms))]
 
             # Export LiDAR to camera transformations
             for i, cam_transform in enumerate(cam_transforms):
