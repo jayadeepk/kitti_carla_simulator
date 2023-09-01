@@ -2,6 +2,7 @@ import glob
 import math
 import numpy as np
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -34,6 +35,7 @@ CONFIG = {
     'towns': [1, 2, 3, 4, 5, 6, 7],
     'spawn_points': [23, 46, 0, 125, 53, 257, 62],
     'frames_per_town': 5000,  # MAX = 10000
+    'weather_update_frequency': 30,
 }
 
 def main():
@@ -62,7 +64,7 @@ def main():
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
 
             # Weather
-            world.set_weather(carla.WeatherParameters.WetCloudyNoon)
+            world.set_weather(carla.WeatherParameters.ClearNoon)
 
             # Set Synchronous mode
             settings = world.get_settings()
@@ -179,7 +181,20 @@ def main():
             start_record = time.time()
             print("Start record : ")
             frame_current = 0
+            random.seed(0)
             while (frame_current < CONFIG['frames_per_town']):
+                if frame_current % CONFIG['weather_update_frequency'] == 0:
+                    weather = carla.WeatherParameters(cloudiness=float(random.randint(5, 40)),
+                                                      sun_altitude_angle=float(random.randint(15, 90)),
+                                                      sun_azimuth_angle=float(random.randint(80, 100)),
+                                                      fog_density=float(random.randint(0, 2)),
+                                                      fog_distance=0.75,
+                                                      fog_falloff=0.1,
+                                                      scattering_intensity=1.0,
+                                                      mie_scattering_scale=0.03,
+                                                      rayleigh_scattering_scale=0.0331)
+                    world.set_weather(weather)
+
                 frame_current = VelodyneHDL64.save()
                 for cam in cams:
                     cam.save()
