@@ -4,6 +4,7 @@ import numpy as np
 import os
 import random
 import sys
+import yaml
 from pathlib import Path
 
 try:
@@ -17,28 +18,11 @@ except IndexError:
 
 import carla
 import time
-from datetime import date
 from modules import generator_KITTI as gen
 
-CONFIG = {
-    'lidar_extrinsics': {'x': 0.0, 'y': 0.0, 'z': 1.80, 'pitch': 0.0, 'yaw': 180.0, 'roll': 0.0},
-    'camera_extrinsics': [
-        {'x': 0.30, 'y': 0.0,   'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
-        {'x': 0.30, 'y': 0.50,  'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
-        {'x': 0.30, 'y': -0.50, 'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
-    ],
-    'sequence_start': 60,
-    'image_folder_start': 2,
-    'rgb_image_size_x': 1242,
-    'rgb_image_size_y': 376,
-    'rgb_fov': 90, # field of view on width
-    'towns': [1, 2, 3, 4, 5, 6, 7],
-    'spawn_points': [23, 46, 0, 125, 53, 257, 62],
-    'frames_per_town': 5000,  # MAX = 10000
-    'weather_update_frequency': 30,
-}
+DEFAULT_CONFIG_FILE = 'config/default.yaml'
 
-def main():
+def main(config):
     start_record_full = time.time()
 
     fps_simu = 1000.0
@@ -55,11 +39,11 @@ def main():
         client = carla.Client('localhost', 2000)
         init_settings = carla.WorldSettings()
 
-        for i, i_town in enumerate(CONFIG['towns']):
+        for i, i_town in enumerate(config['towns']):
             client.set_timeout(100.0)
             print("Map Town0"+str(i_town))
             world = client.load_world("Town0"+str(i_town))
-            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), CONFIG['sequence_start'] + i)
+            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), config['sequence_start'] + i)
             os.makedirs(folder_output) if not os.path.exists(folder_output) else [os.remove(f) for f in glob.glob(folder_output+"/*") if os.path.isfile(f)]
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
 
@@ -78,7 +62,7 @@ def main():
             bp_KITTI = blueprint_library.find('vehicle.tesla.model3')
             bp_KITTI.set_attribute('color', '228, 239, 241')
             bp_KITTI.set_attribute('role_name', 'KITTI')
-            start_pose = world.get_map().get_spawn_points()[CONFIG['spawn_points'][i]]
+            start_pose = world.get_map().get_spawn_points()[config['spawn_points'][i]]
             KITTI = world.spawn_actor(bp_KITTI, start_pose)
             waypoint = world.get_map().get_waypoint(start_pose.location)
             actor_list.append(KITTI)
@@ -96,48 +80,45 @@ def main():
             # Set sensors transformation from KITTI
             lidar_transform = carla.Transform(
                 carla.Location(
-                    x=CONFIG['lidar_extrinsics']['x'],
-                    y=CONFIG['lidar_extrinsics']['y'],
-                    z=CONFIG['lidar_extrinsics']['z']
+                    x=config['lidar_extrinsics']['x'],
+                    y=config['lidar_extrinsics']['y'],
+                    z=config['lidar_extrinsics']['z']
                 ),
                 carla.Rotation(
-                    pitch=CONFIG['lidar_extrinsics']['pitch'],
-                    yaw=CONFIG['lidar_extrinsics']['yaw'],
-                    roll=CONFIG['lidar_extrinsics']['roll']
+                    pitch=config['lidar_extrinsics']['pitch'],
+                    yaw=config['lidar_extrinsics']['yaw'],
+                    roll=config['lidar_extrinsics']['roll']
                 )
             )
             cam_transforms = [
                 carla.Transform(
                     carla.Location(
-                        x=CONFIG['camera_extrinsics'][i]['x'],
-                        y=CONFIG['camera_extrinsics'][i]['y'],
-                        z=CONFIG['camera_extrinsics'][i]['z']
+                        x=config['cameras'][i]['extrinsics']['x'],
+                        y=config['cameras'][i]['extrinsics']['y'],
+                        z=config['cameras'][i]['extrinsics']['z']
                     ),
                     carla.Rotation(
-                        pitch=CONFIG['camera_extrinsics'][i]['pitch'],
-                        yaw=CONFIG['camera_extrinsics'][i]['yaw'],
-                        roll=CONFIG['camera_extrinsics'][i]['roll']
+                        pitch=config['cameras'][i]['extrinsics']['pitch'],
+                        yaw=config['cameras'][i]['extrinsics']['yaw'],
+                        roll=config['cameras'][i]['extrinsics']['roll']
                     )
-                ) for i in range(len(CONFIG['camera_extrinsics']))
+                ) for i in range(len(config['cameras']))
             ]
-
-            # Take a screenshot
-            gen.screenshot(KITTI, world, actor_list, folder_output, carla.Transform(carla.Location(x=0.0, y=0, z=2.0), carla.Rotation(pitch=0, yaw=0, roll=0)), CONFIG)
 
             # Create our sensors
             gen.RGB.sensor_id_glob = 0
             gen.HDL64E.sensor_id_glob = 100
-            VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform, CONFIG)
-            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], CONFIG) for i in range(len(cam_transforms))]
+            VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
+            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], config['cameras'][i]) for i in range(len(cam_transforms))]
 
             # Export LiDAR to camera transformations
             Ks = []
             Trs = []
             to_string = lambda array: ' '.join(map(str, array.flatten().tolist()))
             for i, cam_transform in enumerate(cam_transforms):
-                focal_length = CONFIG['rgb_image_size_x'] / (2 * math.tan(CONFIG['rgb_fov'] * math.pi / 360))
-                center_x = CONFIG['rgb_image_size_x'] / 2
-                center_y = CONFIG['rgb_image_size_y'] / 2
+                focal_length = config['cameras'][i]['width'] / (2 * math.tan(config['cameras'][i]['fov'] * math.pi / 360))
+                center_x = config['cameras'][i]['width'] / 2
+                center_y = config['cameras'][i]['height'] / 2
                 Ks.append(np.array([[focal_length, 0, center_x],
                                     [0, focal_length, center_y],
                                     [0, 0, 1]]))
@@ -182,8 +163,8 @@ def main():
             print("Start record : ")
             frame_current = 0
             random.seed(0)
-            while (frame_current < CONFIG['frames_per_town']):
-                if frame_current % CONFIG['weather_update_frequency'] == 0:
+            while (frame_current < config['frames_per_town']):
+                if frame_current % config['weather_update_frequency'] == 0:
                     weather = carla.WeatherParameters(cloudiness=float(random.randint(5, 40)),
                                                       sun_altitude_angle=float(random.randint(15, 90)),
                                                       sun_azimuth_angle=float(random.randint(80, 100)),
@@ -234,4 +215,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    config_file = DEFAULT_CONFIG_FILE
+    if len(sys.argv) > 1:
+        if not os.path.isfile(sys.argv[1]):
+            print(f'Error: Config file "{sys.argv[1]}" does not exist.')
+            exit(1)
+        config_file = sys.argv[1]
+    with open(config_file, 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    main(config)

@@ -1,0 +1,61 @@
+---
+frames_per_town: 5000
+weather_update_frequency: 30
+sequence_start: 60
+towns:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+spawn_points:
+  - 23
+  - 46
+  - 0
+  - 125
+  - 53
+  - 257
+  - 62
+lidar_extrinsics:
+  x: 0.0
+  y: 0.0
+  z: 1.80
+  pitch: 0.0
+  yaw: 180.0
+  roll: 0.0
+cameras:
+  - id: 0
+    width: 1242
+    height: 376
+    fov: 60   # field of view along width of image
+    extrinsics:
+      x: 0.30
+      y: 0.50
+      z: 1.70
+      pitch: 0.0
+      yaw: 0.0
+      roll: 0.0
+  - id: 1
+    width: 1242
+    height: 376
+    fov: 120
+    extrinsics:
+      x: 0.30
+      y: -0.50
+      z: 1.70
+      pitch: 0.0
+      yaw: 0.0
+      roll: 0.
+  - id: 2
+    width: 1242
+    height: 376
+    fov: 90
+    extrinsics:
+      x: 0.30
+      y: 0.0
+      z: 1.70
+      pitch: 0.0
+      yaw: 0.0
+      roll: 0.0

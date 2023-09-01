@@ -53,7 +53,7 @@ class RGB(Sensor):
         self.ts_tmp = 0
 
         self.sensor_frame_id = 0
-        self.frame_output = self.folder_output + f"/image_{self.sensor_id + config['image_folder_start']}"
+        self.frame_output = self.folder_output + f"/image_{config['id']}"
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
 
         if os.path.exists(self.folder_output + '/times.txt'):
@@ -64,9 +64,9 @@ class RGB(Sensor):
     def set_attributes(self, blueprint_library, config):
         camera_bp = blueprint_library.find('sensor.camera.rgb')
 
-        camera_bp.set_attribute('image_size_x', str(config['rgb_image_size_x']))
-        camera_bp.set_attribute('image_size_y', str(config['rgb_image_size_y']))
-        camera_bp.set_attribute('fov', str(config['rgb_fov'])) # Always fov on width even if width is different than height
+        camera_bp.set_attribute('image_size_x', str(config['width']))
+        camera_bp.set_attribute('image_size_y', str(config['height']))
+        camera_bp.set_attribute('fov', str(config['fov']))
         camera_bp.set_attribute('enable_postprocess_effects', 'True')
         camera_bp.set_attribute('sensor_tick', '0.10') # 10Hz camera
         camera_bp.set_attribute('gamma', '2.2')
@@ -104,11 +104,11 @@ class RGB(Sensor):
 
 class HDL64E(Sensor):
     sensor_id_glob = 100
-    def __init__(self, vehicle, world, actor_list, folder_output, transform, config):
+    def __init__(self, vehicle, world, actor_list, folder_output, transform):
         self.rotation_lidar = rotation_carla(transform.rotation)
         self.rotation_lidar_transpose = self.rotation_lidar.T
         self.queue = queue.PriorityQueue()
-        self.bp = self.set_attributes(world.get_blueprint_library(), config)
+        self.bp = self.set_attributes(world.get_blueprint_library())
         self.sensor = world.spawn_actor(self.bp, transform, attach_to=vehicle)
         actor_list.append(self.sensor)
         self.sensor.listen(lambda data: self.queue.put((data.timestamp, data)))
@@ -205,7 +205,7 @@ class HDL64E(Sensor):
         print("Export : "+ply_file_path)
 
 
-    def set_attributes(self, blueprint_library, config):
+    def set_attributes(self, blueprint_library):
         lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
         lidar_bp.set_attribute('channels', '64')
         lidar_bp.set_attribute('range', '80.0')    # 80.0 m
@@ -238,24 +238,6 @@ def transform_lidar_to_camera(lidar_tranform, camera_transform):
     R_lidar_camera = R_camera_vehicle.T.dot(R_lidar_vehicle)
     T_lidar_camera = R_camera_vehicle.T.dot(translation_carla(np.array([[lidar_tranform.location.x],[lidar_tranform.location.y],[lidar_tranform.location.z]])-np.array([[camera_transform.location.x],[camera_transform.location.y],[camera_transform.location.z]])))
     return np.vstack((np.hstack((R_lidar_camera, T_lidar_camera)), [0,0,0,1]))
-
-def screenshot(vehicle, world, actor_list, folder_output, transform, config):
-    sensor = world.spawn_actor(RGB.set_attributes(RGB, world.get_blueprint_library(), config), transform, attach_to=vehicle)
-    actor_list.append(sensor)
-    screenshot_queue = queue.Queue()
-    sensor.listen(screenshot_queue.put)
-    print('created %s' % sensor)
-
-    while screenshot_queue.empty(): world.tick()
-
-    file_path = folder_output+"/screenshot.png"
-    screenshot_queue.get().save_to_disk(file_path)
-    print("Export : "+file_path)
-    actor_list[-1].destroy()
-    print('destroyed %s' % actor_list[-1])
-    del actor_list[-1]
-
-
 
 def spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id):
         world = client.get_world()
