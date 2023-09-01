@@ -53,7 +53,7 @@ class RGB(Sensor):
         self.ts_tmp = 0
 
         self.sensor_frame_id = 0
-        self.frame_output = self.folder_output+"/image_%d" % self.sensor_id
+        self.frame_output = self.folder_output + f"/image_{self.sensor_id + config['image_folder_start']}"
         os.makedirs(self.frame_output) if not os.path.exists(self.frame_output) else [os.remove(f) for f in glob.glob(self.frame_output+"/*") if os.path.isfile(f)]
 
         if os.path.exists(self.folder_output + '/times.txt'):

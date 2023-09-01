@@ -27,9 +27,13 @@ CONFIG = {
         {'x': 0.30, 'y': -0.50, 'z': 1.70, 'pitch': 0.0, 'yaw': 0.0, 'roll': 0.0},
     ],
     'sequence_start': 60,
+    'image_folder_start': 2,
     'rgb_image_size_x': 1242,
     'rgb_image_size_y': 376,
     'rgb_fov': 90, # field of view on width
+    'towns': [1, 2, 3, 4, 5, 6, 7],
+    'spawn_points': [23, 46, 0, 125, 53, 257, 62],
+    'frames_per_town': 5000,  # MAX = 10000
 }
 
 def main():
@@ -37,28 +41,23 @@ def main():
 
     fps_simu = 1000.0
     time_stop = 2.0
-    nbr_frame = 5000 #MAX = 10000
     nbr_walkers = 50
     nbr_vehicles = 50
 
     actor_list = []
     vehicles_list = []
     all_walkers_id = []
-    data_date = date.today().strftime("%Y_%m_%d")
-
-    spawn_points = [23,46,0,125,53,257,62]
-
     init_settings = None
 
     try:
         client = carla.Client('localhost', 2000)
         init_settings = carla.WorldSettings()
 
-        for i_map in [0, 1, 2, 3, 4, 5, 6]: #7 maps from Town01 to Town07
+        for i, i_town in enumerate(CONFIG['towns']):
             client.set_timeout(100.0)
-            print("Map Town0"+str(i_map+1))
-            world = client.load_world("Town0"+str(i_map+1))
-            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), CONFIG['sequence_start']+i_map)
+            print("Map Town0"+str(i_town))
+            world = client.load_world("Town0"+str(i_town))
+            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), CONFIG['sequence_start'] + i)
             os.makedirs(folder_output) if not os.path.exists(folder_output) else [os.remove(f) for f in glob.glob(folder_output+"/*") if os.path.isfile(f)]
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
 
@@ -77,7 +76,7 @@ def main():
             bp_KITTI = blueprint_library.find('vehicle.tesla.model3')
             bp_KITTI.set_attribute('color', '228, 239, 241')
             bp_KITTI.set_attribute('role_name', 'KITTI')
-            start_pose = world.get_map().get_spawn_points()[spawn_points[i_map]]
+            start_pose = world.get_map().get_spawn_points()[CONFIG['spawn_points'][i]]
             KITTI = world.spawn_actor(bp_KITTI, start_pose)
             waypoint = world.get_map().get_waypoint(start_pose.location)
             actor_list.append(KITTI)
@@ -180,7 +179,7 @@ def main():
             start_record = time.time()
             print("Start record : ")
             frame_current = 0
-            while (frame_current < nbr_frame):
+            while (frame_current < CONFIG['frames_per_town']):
                 frame_current = VelodyneHDL64.save()
                 for cam in cams:
                     cam.save()
