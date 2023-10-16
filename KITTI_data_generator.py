@@ -122,15 +122,7 @@ def main(config):
                 Ks.append(np.array([[focal_length, 0, center_x],
                                     [0, focal_length, center_y],
                                     [0, 0, 1]]))
-
-                R = np.array([0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0]).reshape(3, 3)
-                R = np.hstack([R, np.zeros((3, 1))])
-                R = np.vstack([R, np.array([0.0, 0.0, 0.0, 1.0])])
-
-                Tr = gen.transform_lidar_to_camera(lidar_transform, cam_transform)
-                Tr = np.dot(R, Tr)
-                Tr = Tr[:3, :4]
-                Trs.append(Tr)
+                Trs.append(gen.transform_lidar_to_camera(lidar_transform, cam_transform))
 
             # KITTI style calibration file (only supports one camera)
             with open(folder_output+f"/calib.txt", 'w') as f:

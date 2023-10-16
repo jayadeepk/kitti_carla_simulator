@@ -237,7 +237,21 @@ def transform_lidar_to_camera(lidar_tranform, camera_transform):
     R_lidar_vehicle = np.identity(3) #rotation_carla(lidar_tranform.rotation) #we want the lidar frame to have x forward
     R_lidar_camera = R_camera_vehicle.T.dot(R_lidar_vehicle)
     T_lidar_camera = R_camera_vehicle.T.dot(translation_carla(np.array([[lidar_tranform.location.x],[lidar_tranform.location.y],[lidar_tranform.location.z]])-np.array([[camera_transform.location.x],[camera_transform.location.y],[camera_transform.location.z]])))
-    return np.vstack((np.hstack((R_lidar_camera, T_lidar_camera)), [0,0,0,1]))
+    Tr = np.vstack((np.hstack((R_lidar_camera, T_lidar_camera)), [0,0,0,1]))
+
+    R = np.array([0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0]).reshape(3, 3)
+    R = np.hstack([R, np.zeros((3, 1))])
+    R = np.vstack([R, np.array([0.0, 0.0, 0.0, 1.0])])
+    Tr = np.dot(R, Tr)
+    Tr = Tr[:3, :4]
+    return Tr
+
+def get_camera_transform_back(lidar_transform, lidar_to_camera_transform):
+    R_lidar_vehicle = np.identity(3) #rotation_carla(lidar_transform.rotation) #we want the lidar frame to have x forward
+    R_camera_vehicle = lidar_to_camera_transform[:3,:3].T.dot(R_lidar_vehicle)
+    T_camera_vehicle = lidar_to_camera_transform[:3,:3].T.dot(translation_carla(np.array([[lidar_transform.location.x],[lidar_transform.location.y],[lidar_transform.location.z]])-lidar_to_camera_transform[:3,3].reshape(3,1)))
+    Tr = np.vstack((np.hstack((R_camera_vehicle, T_camera_vehicle)), [0,0,0,1]))
+    return Tr
 
 def spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id):
         world = client.get_world()
