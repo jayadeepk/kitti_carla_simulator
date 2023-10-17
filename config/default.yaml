@@ -1,5 +1,6 @@
 ---
-frames_per_town: 5000
+version: '0.1.0'
+frames_per_town: 120
 weather_update_frequency: 30
 sequence_start: 60
 towns:

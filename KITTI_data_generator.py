@@ -43,7 +43,7 @@ def main(config):
             client.set_timeout(100.0)
             print("Map Town0"+str(i_town))
             world = client.load_world("Town0"+str(i_town))
-            folder_output = "KITTI_Dataset_CARLA_v%s/sequences/%02d" %(client.get_client_version(), config['sequence_start'] + i)
+            folder_output = "SiMCaL_%s/sequences/%02d" % (config['version'], config['sequence_start'] + i)
             os.makedirs(folder_output) if not os.path.exists(folder_output) else [os.remove(f) for f in glob.glob(folder_output+"/*") if os.path.isfile(f)]
             client.start_recorder(os.path.dirname(os.path.realpath(__file__))+"/"+folder_output+"/recording.log")
 
