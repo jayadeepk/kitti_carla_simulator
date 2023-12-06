@@ -244,3 +244,23 @@ def follow(transform, world):    # Transforme carla.Location(x,y,z) from sensor 
     world.get_spectator().set_transform(carla.Transform(transform.transform(carla.Location(x=-15,y=0,z=5)), rot))
 
 
+def get_random_camera_transforms(config):
+    """Returns a list of random camera transforms within ranges specified in config"""
+    transforms = []
+    for i in range(len(config['cameras'])):
+        x = get_random_value(config['cameras'][i]['extrinsics']['x'])
+        y = get_random_value(config['cameras'][i]['extrinsics']['y'])
+        z = get_random_value(config['cameras'][i]['extrinsics']['z'])
+        pitch = get_random_value(config['cameras'][i]['extrinsics']['pitch'])
+        yaw = get_random_value(config['cameras'][i]['extrinsics']['yaw'])
+        roll = get_random_value(config['cameras'][i]['extrinsics']['roll'])
+        transforms.append(carla.Transform(carla.Location(x=x, y=y, z=z), carla.Rotation(pitch=pitch, yaw=yaw, roll=roll)))
+    return transforms
+
+def get_random_value(value):
+    """Returns a random value between min and max if value is a list, else returns value"""
+    if isinstance(value, list):
+        if len(value) != 2:
+            print("Error: accepted values for extrinsics are either a single float value or a list of two values for min and max.")
+        return np.random.uniform(value[0], value[1])
+    return value

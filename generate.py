@@ -83,20 +83,7 @@ def main(config):
                     roll=config['lidar_extrinsics']['roll']
                 )
             )
-            cam_transforms = [
-                carla.Transform(
-                    carla.Location(
-                        x=config['cameras'][i]['extrinsics']['x'],
-                        y=config['cameras'][i]['extrinsics']['y'],
-                        z=config['cameras'][i]['extrinsics']['z']
-                    ),
-                    carla.Rotation(
-                        pitch=config['cameras'][i]['extrinsics']['pitch'],
-                        yaw=config['cameras'][i]['extrinsics']['yaw'],
-                        roll=config['cameras'][i]['extrinsics']['roll']
-                    )
-                ) for i in range(len(config['cameras']))
-            ]
+            cam_transforms = sensors.get_random_camera_transforms(config)
 
             # Create our sensors
             sensors.RGB.sensor_id_glob = 0
@@ -160,6 +147,11 @@ def main(config):
                                                       mie_scattering_scale=0.03,
                                                       rayleigh_scattering_scale=0.0331)
                     world.set_weather(weather)
+
+                # Randomize camera transforms
+                cam_transforms = sensors.get_random_camera_transforms(config)
+                for i, cam in enumerate(cams):
+                    cam.sensor.set_transform(cam_transforms[i])
 
                 frame_current = VelodyneHDL64.save()
                 for cam in cams:
