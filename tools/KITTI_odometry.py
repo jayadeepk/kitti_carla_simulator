@@ -3,6 +3,8 @@
 Convert KITTI-CARLA dataset into KITTI odometry dataset format
 """
 
+import sys
+sys.path.append("..")
 from modules import ply
 from PIL import Image
 from tqdm import tqdm
