@@ -4,21 +4,14 @@ import numpy as np
 import os
 import random
 import sys
-import yaml
-from pathlib import Path
-
-try:
-    sys.path.append(glob.glob('%s/PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
-        "C:/CARLA_0.9.10/WindowsNoEditor" if os.name == 'nt' else str(Path.home()) + "/CARLA_0.9.10",
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
-
-import carla
 import time
-from modules import generator_KITTI as gen
+import yaml
+
+from modules import sensors
+from modules import objects
+from modules.common import add_carla_to_path; add_carla_to_path()
+import carla
+
 
 DEFAULT_CONFIG_FILE = 'config/default.yaml'
 
@@ -69,7 +62,7 @@ def main(config):
             print('Created %s' % KITTI)
 
             # Spawn vehicles and walkers
-            gen.spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id)
+            objects.spawn_npc(client, nbr_vehicles, nbr_walkers, vehicles_list, all_walkers_id)
 
             # Wait for KITTI to stop
             start = world.get_snapshot().timestamp.elapsed_seconds
@@ -106,10 +99,10 @@ def main(config):
             ]
 
             # Create our sensors
-            gen.RGB.sensor_id_glob = 0
-            gen.HDL64E.sensor_id_glob = 100
-            VelodyneHDL64 = gen.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
-            cams = [gen.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], config['cameras'][i]) for i in range(len(cam_transforms))]
+            sensors.RGB.sensor_id_glob = 0
+            sensors.HDL64E.sensor_id_glob = 100
+            VelodyneHDL64 = sensors.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
+            cams = [sensors.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], config['cameras'][i]) for i in range(len(cam_transforms))]
 
             # Export LiDAR to camera transformations
             Ks = []
@@ -122,7 +115,7 @@ def main(config):
                 Ks.append(np.array([[focal_length, 0, center_x],
                                     [0, focal_length, center_y],
                                     [0, 0, 1]]))
-                Trs.append(gen.transform_lidar_to_camera(lidar_transform, cam_transform))
+                Trs.append(sensors.transform_lidar_to_camera(lidar_transform, cam_transform))
 
             # KITTI style calibration file (only supports one camera)
             with open(folder_output+f"/calib.txt", 'w') as f:
@@ -146,10 +139,10 @@ def main(config):
             world.tick()
 
             VelodyneHDL64.init()
-            gen.follow(KITTI.get_transform(), world)
+            sensors.follow(KITTI.get_transform(), world)
 
             # All sensors produce first data at the same time (this ts)
-            gen.Sensor.initial_ts = world.get_snapshot().timestamp.elapsed_seconds
+            sensors.Sensor.initial_ts = world.get_snapshot().timestamp.elapsed_seconds
 
             start_record = time.time()
             print("Start record : ")
@@ -171,7 +164,7 @@ def main(config):
                 frame_current = VelodyneHDL64.save()
                 for cam in cams:
                     cam.save()
-                gen.follow(KITTI.get_transform(), world)
+                sensors.follow(KITTI.get_transform(), world)
                 world.tick()    # Pass to the next simulator frame
 
             VelodyneHDL64.save_poses()
