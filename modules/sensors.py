@@ -25,7 +25,7 @@ class Sensor:
 class RGB(Sensor):
     sensor_id_glob = 0
 
-    def __init__(self, vehicle, world, actor_list, folder_output, transform, config):
+    def __init__(self, vehicle, world, actor_list, folder_output, transform, base_transform, config):
         self.queue = queue.Queue()
         self.bp = self.set_attributes(world.get_blueprint_library(), config)
         self.sensor = world.spawn_actor(self.bp, transform, attach_to=vehicle)
@@ -35,6 +35,8 @@ class RGB(Sensor):
         self.__class__.sensor_id_glob += 1
         self.folder_output = folder_output
         self.ts_tmp = 0
+        self.base_transform = base_transform
+        self.config = config
 
         self.sensor_frame_id = 0
         self.frame_output = self.folder_output + f"/image_{config['id']}"
@@ -83,6 +85,15 @@ class RGB(Sensor):
                 with open(self.folder_output + '/times.txt', 'a') as file:
                     # TODO: Check if the one-tick-late bug is still in 0.9.14
                     file.write(str(data.timestamp - Sensor.initial_ts) + '\n') #bug in CARLA 0.9.10: timestamp of camera is one tick late. 1 tick = 1/fps_simu seconds
+
+            # Export calibration file
+            K, Tr = lidar_to_camera_transform(self.base_transform, self.sensor.get_transform(), self.config)
+            to_string = lambda array: ','.join(map(str, array.flatten().tolist()))
+            with open(self.folder_output+f"/calib2.txt", 'a') as posfile:
+                id = self.config['id']
+                posfile.write(f'{self.sensor_frame_id},K{id},{to_string(K)}\n')
+                posfile.write(f'{self.sensor_frame_id},Tr{id},{to_string(Tr)}\n')
+
             self.sensor_frame_id += 1
 
 
@@ -264,3 +275,13 @@ def get_random_value(value):
             print("Error: accepted values for extrinsics are either a single float value or a list of two values for min and max.")
         return np.random.uniform(value[0], value[1])
     return value
+
+def lidar_to_camera_transform(lidar_transform, cam_transform, config):
+    focal_length = config['width'] / (2 * math.tan(config['fov'] * math.pi / 360))
+    center_x = config['width'] / 2
+    center_y = config['height'] / 2
+    K = np.array([[focal_length, 0, center_x],
+                        [0, focal_length, center_y],
+                        [0, 0, 1]])
+    Tr = transform_lidar_to_camera(lidar_transform, cam_transform)
+    return K, Tr

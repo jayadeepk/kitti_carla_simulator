@@ -89,35 +89,23 @@ def main(config):
             sensors.RGB.sensor_id_glob = 0
             sensors.HDL64E.sensor_id_glob = 100
             VelodyneHDL64 = sensors.HDL64E(KITTI, world, actor_list, folder_output, lidar_transform)
-            cams = [sensors.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], config['cameras'][i]) for i in range(len(cam_transforms))]
+            cams = [sensors.RGB(KITTI, world, actor_list, folder_output, cam_transforms[i], lidar_transform, config['cameras'][i]) for i in range(len(cam_transforms))]
 
             # Export LiDAR to camera transformations
             Ks = []
             Trs = []
-            to_string = lambda array: ' '.join(map(str, array.flatten().tolist()))
-            for i, cam_transform in enumerate(cam_transforms):
-                focal_length = config['cameras'][i]['width'] / (2 * math.tan(config['cameras'][i]['fov'] * math.pi / 360))
-                center_x = config['cameras'][i]['width'] / 2
-                center_y = config['cameras'][i]['height'] / 2
-                Ks.append(np.array([[focal_length, 0, center_x],
-                                    [0, focal_length, center_y],
-                                    [0, 0, 1]]))
-                Trs.append(sensors.transform_lidar_to_camera(lidar_transform, cam_transform))
+            for i in range(len(cam_transforms)):
+                K, Tr = sensors.lidar_to_camera_transform(lidar_transform, cam_transforms[i], config['cameras'][i])
+                Ks.append(K)
+                Trs.append(Tr)
 
             # KITTI style calibration file (only supports one camera)
+            to_string = lambda array: ' '.join(map(str, array.flatten().tolist()))
             with open(folder_output+f"/calib.txt", 'w') as f:
                 P = np.hstack([Ks[0], np.zeros((3, 1))])
                 for i in range(4):
                     f.write(f'P{i}: {to_string(P)}\n')
                 f.write(f'Tr: {to_string(Trs[0])}')
-
-            # New style calibration file
-            with open(folder_output+f"/calib2.txt", 'w') as posfile:
-                for i, K in enumerate(Ks):
-                    posfile.write(f'K{i}: {to_string(K)}\n')
-                for i, Tr in enumerate(Trs):
-                    posfile.write(f'Tr{i}: {to_string(Tr)}\n')
-
 
             # Launch KITTI
             KITTI.set_autopilot(True)
